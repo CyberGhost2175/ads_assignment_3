@@ -1,40 +1,21 @@
 package MyHashTable;
 
-import java.util.LinkedList;
 
 public class MyHashTable<K, V> {
-    private class HashNode<K, V> {
-        private K key;
-        private V value;
-        private HashNode<K, V> next;
 
-        public HashNode(K key, V value) {
-            this.key = key;
-            this.value = value;
-        }
-        @Override
-        public String toString() {
-            return "{" + key + " = " + value + "}";
-        }
-    }
 
     private HashNode<K, V>[] chainArray;
-    private int M = 11; // default number of chains
+    private static int M = 11; // default number of chains
+    private static final double LOAD_FACTOR_LIMIT = 0.7;
     private int size;
 
     public MyHashTable() {
-        chainArray = new HashNode[M];
-        size = 0;
+        this(M);
     }
-
-    public MyHashTable(int M) {
-        this.M = M;
-        chainArray = new HashNode[M];
+    @SuppressWarnings("unchecked")
+    public MyHashTable(int new_M) {
+        chainArray = (HashNode<K, V>[]) new HashNode[new_M];
         size = 0;
-    }
-
-    private int hash(K key) {
-        return (key.hashCode() & 0x7fffffff) % M;
     }
 
     public void put(K key, V value) {
@@ -56,46 +37,38 @@ public class MyHashTable<K, V> {
 
     public V get(K key) {
         int index = hash(key);
-        HashNode<K, V> head = chainArray[index];
-        while (head != null) {
-            if (head.key.equals(key)) {
-                return head.value;
+        HashNode<K, V> node = chainArray[index];
+        while (node != null) {
+            if (node.key.equals(key)) {
+                return node.value;
             }
-            head = head.next;
+            node = node.next;
         }
         return null;
     }
 
     public V remove(K key) {
         int index = hash(key);
-        HashNode<K, V> head = chainArray[index];
+        HashNode<K, V> node = chainArray[index];
         HashNode<K, V> prev = null;
-        while (head != null) {
-            if (head.key.equals(key)) {
+        while (node.next != null) {
+            if (node.next.key.equals(key)) {
                 if (prev != null) {
-                    prev.next = head.next;
+                    prev.next = node.next;
                 } else {
-                    chainArray[index] = head.next;
+                    chainArray[index] = node.next;
                 }
                 size--;
-                return head.value;
+                return node.value;
             }
-            prev = head;
-            head = head.next;
+            prev = node;
+            node = node.next;
         }
         return null;
     }
+
     public boolean contains(V value) {
-        for (int i = 0; i < M; i++) {
-            HashNode<K, V> head = chainArray[i];
-            while (head != null) {
-                if (head.value.equals(value)) {
-                    return true;
-                }
-                head = head.next;
-            }
-        }
-        return false;
+        return getKey(value) != null;
     }
 
     public K getKey(V value) {
@@ -111,4 +84,68 @@ public class MyHashTable<K, V> {
         return null;
     }
 
+    public int[] containersLen() {
+        int[] lengths = new int[chainArray.length];
+        for (int i = 0; i < chainArray.length; i++) {
+            lengths[i] = containerLen(i);
+        }
+        return lengths;
+    }
+
+    int containerLen(int index) {
+        int cnt = 0;
+        HashNode<K, V> node = chainArray[index];
+        while (node != null) {
+            cnt++;
+            node = node.next;
+        }
+        return cnt;
+    }
+
+    private int hash(K key) {
+        checkKey(key);
+        return Math.abs(key.hashCode() % chainArray.length);
+    }
+
+    private void checkKey(K key) {
+        if (key == null) throw new IllegalArgumentException();
+    }
+
+    private void checkLoad() {
+        if (loadFactor() > LOAD_FACTOR_LIMIT) increaseSize();
+    }
+
+    private void increaseSize() {
+        HashNode<K, V>[] prev = chainArray;
+        chainArray = new HashNode[chainArray.length * 2];
+        size = 0;
+        for (HashNode<K, V> node : prev) {
+            while (node != null) {
+                put(node.key, node.value);
+                node = node.next;
+            }
+        }
+    }
+
+    private double loadFactor() {
+        return (double) size / chainArray.length;
+    }
+
+    private class HashNode<K, V> {
+        private K key;
+        private V value;
+        private HashNode<K, V> next;
+
+        public HashNode(K key, V value) {
+            this.key = key;
+            this.value = value;
+        }
+
+        @Override
+        public String toString() {
+            return "{" + key + " = " + value + "}";
+        }
+    }
 }
+
+
